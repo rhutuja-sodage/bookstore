@@ -1,0 +1,121 @@
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Book } from '../core/models';
+
+/**
+ * Generates a book cover as inline SVG from the book's cover style, so the
+ * project ships without binary image assets. Aspect ratio is fixed at 2:3.
+ */
+@Component({
+  selector: 'bw-book-cover',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <svg viewBox="0 0 200 300" class="block h-full w-full" role="img" [attr.aria-label]="'Cover of ' + book().title">
+      <rect width="200" height="300" [attr.fill]="c().bg" />
+      @switch (c().motif) {
+        @case ('sun') {
+          <circle cx="100" cy="125" r="22" [attr.fill]="c().accent" />
+          <path d="M60 205v-35a40 40 0 0 1 80 0v35h-22v-35a18 18 0 0 0-36 0v35z" [attr.fill]="c().accent" />
+        }
+        @case ('target') {
+          <circle cx="100" cy="120" r="48" [attr.fill]="c().accent" opacity=".9" />
+          <circle cx="100" cy="120" r="33" fill="#fff" />
+          <circle cx="100" cy="120" r="19" [attr.fill]="c().accent" />
+          <circle cx="100" cy="120" r="7" fill="#fff" />
+        }
+        @case ('bulb') {
+          <circle cx="100" cy="115" r="38" [attr.fill]="c().accent" />
+          <rect x="86" y="150" width="28" height="22" rx="4" [attr.fill]="c().fg" opacity=".85" />
+          <path d="M100 85v30M88 100l12 15 12-15" [attr.stroke]="c().bg" stroke-width="5" fill="none" stroke-linecap="round" />
+        }
+        @case ('arrow') {
+          <path d="M40 235l55-70 28 22 45-80" [attr.stroke]="c().accent" stroke-width="16" fill="none" stroke-linejoin="round" />
+          <path d="M150 90h-34l34 34z" [attr.fill]="c().accent" />
+          <path d="M20 270c40-20 120-20 160 0v30H20z" fill="#000" opacity=".25" />
+        }
+        @case ('rocket') {
+          <path d="M100 55c26 22 30 70 22 105H78c-8-35-4-83 22-105z" [attr.fill]="c().fg" />
+          <circle cx="100" cy="105" r="11" [attr.fill]="c().accent" />
+          <path d="M78 140l-20 30 24-6zM122 140l20 30-24-6z" [attr.fill]="c().accent" />
+          <path d="M90 165h20l-10 30z" [attr.fill]="c().accent" />
+        }
+        @case ('moon') {
+          <circle cx="100" cy="115" r="42" [attr.fill]="c().accent" />
+          <circle cx="118" cy="104" r="38" [attr.fill]="c().bg" />
+          <path d="M20 235h160v65H20z" fill="#000" opacity=".3" />
+          <path d="M40 235v-28h14v28M70 235v-45h18v45M104 235v-34h14v34M134 235v-52h20v52" fill="#000" opacity=".45" />
+        }
+        @case ('house') {
+          <path d="M55 180v-45l45-35 45 35v45z" [attr.fill]="c().accent" opacity=".85" />
+          <rect x="90" y="150" width="20" height="30" [attr.fill]="c().bg" />
+          <path d="M0 215c40-18 120 8 200-6v90H0z" [attr.fill]="c().accent" opacity=".25" />
+        }
+        @case ('cat') {
+          <path d="M65 170l-6-52 28 20h26l28-20-6 52c0 22-18 38-35 38s-35-16-35-38z" [attr.fill]="c().fg" />
+          <circle cx="88" cy="160" r="5" [attr.fill]="c().bg" />
+          <circle cx="114" cy="160" r="5" [attr.fill]="c().bg" />
+          <path d="M97 172h8l-4 5z" [attr.fill]="c().bg" />
+        }
+        @case ('crown') {
+          <path d="M55 170l-8-62 38 30 15-42 15 42 38-30-8 62z" [attr.fill]="c().accent" />
+          <rect x="55" y="174" width="90" height="14" [attr.fill]="c().accent" />
+        }
+        @case ('waves') {
+          <path d="M20 130c20-18 40 18 60 0s40 18 60 0 40 18 60 0M20 160c20-18 40 18 60 0s40 18 60 0 40 18 60 0M20 190c20-18 40 18 60 0s40 18 60 0 40 18 60 0" [attr.stroke]="c().accent" stroke-width="8" fill="none" stroke-linecap="round" />
+        }
+        @case ('leaf') {
+          <path d="M100 205c-48-10-62-60-48-98 44 0 76 28 80 70-10 14-22 24-32 28z" [attr.fill]="c().accent" />
+          <path d="M100 205c0-40 8-70 30-95" [attr.stroke]="c().bg" stroke-width="4" fill="none" />
+        }
+        @case ('heart') {
+          <path d="M100 195s-52-30-52-72a30 30 0 0 1 52-18 30 30 0 0 1 52 18c0 42-52 72-52 72z" [attr.fill]="c().accent" />
+        }
+        @case ('stars') {
+          <circle cx="60" cy="90" r="3" [attr.fill]="c().accent" />
+          <circle cx="150" cy="70" r="2.5" [attr.fill]="c().accent" />
+          <circle cx="130" cy="130" r="3.5" [attr.fill]="c().accent" />
+          <circle cx="75" cy="160" r="2.5" [attr.fill]="c().accent" />
+          <circle cx="165" cy="175" r="3" [attr.fill]="c().accent" />
+          <path d="M100 80l7 20 21 1-17 13 6 20-17-12-17 12 6-20-17-13 21-1z" [attr.fill]="c().accent" />
+        }
+        @case ('book') {
+          <path d="M45 190V95c24-8 42-4 55 10 13-14 31-18 55-10v95c-24-8-42-4-55 10-13-14-31-18-55-10z" [attr.fill]="c().accent" opacity=".9" />
+          <path d="M100 105v95" [attr.stroke]="c().bg" stroke-width="3" />
+        }
+        @case ('globe') {
+          <circle cx="100" cy="125" r="46" fill="none" [attr.stroke]="c().accent" stroke-width="6" />
+          <ellipse cx="100" cy="125" rx="20" ry="46" fill="none" [attr.stroke]="c().accent" stroke-width="4" />
+          <path d="M54 125h92M62 100h76M62 150h76" [attr.stroke]="c().accent" stroke-width="4" />
+        }
+      }
+      <text x="100" [attr.y]="titleY()" text-anchor="middle" [attr.fill]="c().fg" font-weight="700" font-size="17" letter-spacing=".5"
+            font-family="IBM Plex Sans, Segoe UI, sans-serif">
+        @for (line of titleLines(); track $index) {
+          <tspan x="100" [attr.dy]="$index === 0 ? 0 : 20">{{ line }}</tspan>
+        }
+      </text>
+      <text x="100" y="282" text-anchor="middle" [attr.fill]="c().fg" font-size="10.5" letter-spacing="2"
+            font-family="IBM Plex Sans, Segoe UI, sans-serif" opacity=".9">{{ book().author.toUpperCase() }}</text>
+    </svg>
+  `,
+  styles: `:host { display: block; aspect-ratio: 2 / 3; overflow: hidden; }`,
+})
+export class BookCoverComponent {
+  readonly book = input.required<Book>();
+  protected readonly c = computed(() => this.book().cover);
+  protected readonly titleLines = computed(() => {
+    const words = this.book().title.toUpperCase().split(' ');
+    const lines: string[] = [];
+    let line = '';
+    for (const w of words) {
+      if ((line + ' ' + w).trim().length > 13 && line) {
+        lines.push(line);
+        line = w;
+      } else {
+        line = (line + ' ' + w).trim();
+      }
+    }
+    if (line) lines.push(line);
+    return lines.slice(0, 4);
+  });
+  protected readonly titleY = computed(() => 40);
+}

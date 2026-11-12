@@ -1,0 +1,100 @@
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { CartService } from '../../core/cart.service';
+import { CheckoutService } from '../../core/checkout.service';
+import { OrderService } from '../../core/order.service';
+import { ToastService } from '../../core/toast.service';
+import { giftPointsEarned } from '../../core/pricing';
+import { PriceRowsComponent } from '../../shared/price-rows.component';
+import { BookCoverComponent } from '../../shared/book-cover.component';
+import { DeliveryPipe, InrPipe } from '../../shared/pipes';
+
+/** Step between payment details and the thank-you page: shows the full bill before the order is placed. */
+@Component({
+  selector: 'bw-confirm',
+  imports: [RouterLink, PriceRowsComponent, BookCoverComponent, DeliveryPipe, InrPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="mx-auto max-w-4xl p-3 sm:p-4">
+      <nav class="crumbs mb-2" aria-label="Breadcrumb">
+        <a routerLink="/cart" class="link">Cart</a> / <a routerLink="/checkout" class="link">Checkout</a> / <a routerLink="/payment" class="link">Payment</a> / Confirm
+      </nav>
+      <h1 class="mb-4 text-lg font-semibold">Payment Confirmation</h1>
+
+      <div class="grid items-start gap-5 md:grid-cols-[1fr_20rem]">
+        <div class="space-y-5">
+          <section class="panel p-4" aria-labelledby="items-h">
+            <h2 id="items-h" class="mb-3 text-sm font-semibold">Products</h2>
+            <ul class="divide-y divide-line">
+              @for (i of cart.items(); track i.book.id) {
+                <li class="flex gap-3 py-3 text-xs first:pt-0 last:pb-0">
+                  <div class="w-14 shrink-0 self-start"><bw-book-cover [book]="i.book" /></div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium">{{ i.book.title }}</p>
+                    <p class="text-[#c6c6c6]">by {{ i.book.author }} · {{ i.book.format }}</p>
+                    <p class="text-[11px] text-[#c6c6c6]">Qty {{ i.qty }} × {{ i.book.price | inr }} · Delivery by <strong class="text-white">{{ i.book | delivery }}</strong></p>
+                    <p class="text-[11px] text-muted">Discount {{ i.book.discountPercent }}% · Tax {{ i.book.taxPercent }}%</p>
+                  </div>
+                  <p class="font-semibold">{{ i.book.price * i.qty | inr }}</p>
+                </li>
+              }
+            </ul>
+          </section>
+
+          @if (address(); as a) {
+            <section class="panel p-4 text-xs" aria-labelledby="ship-h">
+              <h2 id="ship-h" class="mb-2 text-sm font-semibold">Delivering to</h2>
+              <p class="font-medium">{{ a.firstName }} {{ a.lastName }}</p>
+              <p class="text-[#c6c6c6]">{{ a.line1 }}, {{ a.city }}, {{ a.state }} {{ a.pin }}, {{ a.country }}</p>
+              <p class="text-[#c6c6c6]">{{ a.email }} · {{ a.countryCode }} {{ a.phone }}</p>
+              <a routerLink="/checkout" class="link mt-1 inline-block">Change</a>
+            </section>
+          }
+        </div>
+
+        <aside class="panel p-4" aria-labelledby="bill-h">
+          <h2 id="bill-h" class="mb-3 text-sm font-semibold">Bill details</h2>
+          <bw-price-rows [pricing]="pricing()" />
+          <div class="mt-3 flex justify-between border-t border-line pt-3 text-xs">
+            <span class="text-[#c6c6c6]">Payment mode</span>
+            <span class="font-medium" data-testid="payment-mode">{{ payment()?.mode }} @if (payment()?.detail) {<span class="text-muted">({{ payment()?.detail }})</span>}</span>
+          </div>
+          <p class="mt-2 text-[11px] text-ok">You will earn {{ willEarn() }} gift points on this order.</p>
+          <button type="button" class="btn-primary mt-4 w-full" (click)="confirm()" [disabled]="busy()" data-testid="confirm-payment">
+            {{ busy() ? 'Processing…' : 'Payment confirmation' }}
+          </button>
+          <a routerLink="/payment" class="btn-ghost mt-2 w-full">Back</a>
+        </aside>
+      </div>
+    </div>
+  `,
+})
+export class ConfirmPage {
+  protected readonly cart = inject(CartService);
+  private readonly checkout = inject(CheckoutService);
+  private readonly orders = inject(OrderService);
+  private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+
+  protected readonly pricing = this.checkout.pricing;
+  protected readonly address = this.checkout.address;
+  protected readonly payment = this.checkout.payment;
+  protected readonly busy = signal(false);
+  protected readonly willEarn = computed(() => giftPointsEarned(this.pricing().total, this.orders.previousOrdersTotal()));
+
+  protected confirm(): void {
+    const address = this.address();
+    const payment = this.payment();
+    if (this.busy() || !address || !payment || !this.cart.items().length) return;
+    this.busy.set(true);
+    try {
+      const order = this.orders.place(this.cart.items(), address, payment, this.pricing());
+      this.cart.clear();
+      this.checkout.reset();
+      this.router.navigate(['/success', order.number]);
+    } catch {
+      this.busy.set(false);
+      this.toast.error('We could not place your order. Please try again.');
+    }
+  }
+}

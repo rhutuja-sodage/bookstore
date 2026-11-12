@@ -1,0 +1,36 @@
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { PriceBreakdown } from '../core/models';
+import { InrPipe } from './pipes';
+
+/** Itemised price rows reused on checkout, payment and confirmation pages. */
+@Component({
+  selector: 'bw-price-rows',
+  imports: [InrPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    @let p = pricing();
+    <dl class="space-y-1.5 text-xs">
+      <div class="flex justify-between"><dt>Price ({{ p.itemCount }} {{ p.itemCount === 1 ? 'item' : 'items' }})</dt><dd>{{ p.subtotal | inr }}</dd></div>
+      <div class="flex justify-between"><dt>Tax</dt><dd>{{ p.tax | inr }}</dd></div>
+      <div class="flex justify-between"><dt>Delivery Charges</dt><dd class="text-ok">{{ p.shipping === 0 ? 'Free' : (p.shipping | inr) }}</dd></div>
+    </dl>
+    <dl class="mt-2 space-y-1.5 border-t border-line pt-2 text-xs">
+      <div class="flex justify-between">
+        <dt>Discount @if (p.productDiscountPercent > 0) {<span class="text-muted">({{ p.productDiscountPercent }}%)</span>}</dt>
+        <dd>{{ p.productDiscount > 0 ? '-' : '' }}{{ p.productDiscount | inr }}</dd>
+      </div>
+      @if (p.couponDiscount > 0) {
+        <div class="flex justify-between text-ok"><dt>Coupon ({{ p.couponCode }})</dt><dd>-{{ p.couponDiscount | inr }}</dd></div>
+      }
+      @if (p.pointsUsed > 0) {
+        <div class="flex justify-between text-ok"><dt>Gift points ({{ p.pointsUsed }})</dt><dd>-{{ p.pointsUsed | inr }}</dd></div>
+      }
+    </dl>
+    <div class="mt-2 flex justify-between border-t border-line pt-2 text-sm font-semibold" data-testid="total-amount">
+      <span>Total Amount</span><span>{{ p.total | inr }}</span>
+    </div>
+  `,
+})
+export class PriceRowsComponent {
+  readonly pricing = input.required<PriceBreakdown>();
+}

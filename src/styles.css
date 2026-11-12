@@ -1,1 +1,146 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+
+/* Design tokens shared by every page so the whole app stays visually uniform */
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --color-app: #161616;
+  --color-nav: #050505;
+  --color-surface: #1e1e1e;
+  --color-panel: #262626;
+  --color-field: #393939;
+  --color-line: #393939;
+  --color-brand: #0f62fe;
+  --color-brand-hover: #0353e9;
+  --color-link: #78a9ff;
+  --color-muted: #a8a8a8;
+  --color-ok: #42be65;
+  --color-danger: #fa4d56;
+  --color-warn: #f1c21b;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--color-app);
+}
+
+body {
+  margin: 0;
+  background: var(--color-app);
+  color: #f4f4f4;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+a,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Reusable UI primitives (plain CSS so they can be used from any component template) */
+@layer components {
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+  .btn-primary:disabled,
+  .btn-secondary:disabled,
+  .btn-ghost:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--color-brand);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-brand-hover);
+  }
+  .btn-secondary {
+    background: #6f6f6f;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: #8d8d8d;
+  }
+  .btn-ghost {
+    border: 1px solid #6f6f6f;
+    background: transparent;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--color-field);
+  }
+  .btn-sm {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .field {
+    width: 100%;
+    background: var(--color-field);
+    color: #fff;
+    font-size: 0.8125rem;
+    padding: 0.6rem 0.75rem;
+    border: 0;
+    border-bottom: 1px solid #8d8d8d;
+    border-radius: 0;
+  }
+  .field::placeholder {
+    color: #8d8d8d;
+  }
+  .field:focus {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+  }
+  .field:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .field.invalid {
+    outline: 2px solid var(--color-danger);
+    outline-offset: -2px;
+  }
+  .field-label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-size: 0.75rem;
+    color: #c6c6c6;
+  }
+  .field-error {
+    margin-top: 0.25rem;
+    font-size: 0.7rem;
+    color: var(--color-danger);
+  }
+
+  .panel {
+    background: var(--color-surface);
+    border: 1px solid #262626;
+  }
+  .link {
+    color: var(--color-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .link:hover {
+    color: #a6c8ff;
+  }
+  .crumbs {
+    font-size: 0.75rem;
+    color: #c6c6c6;
+  }
+}

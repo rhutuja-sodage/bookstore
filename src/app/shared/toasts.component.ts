@@ -1,0 +1,22 @@
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ToastService } from '../core/toast.service';
+
+@Component({
+  selector: 'bw-toasts',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="pointer-events-none fixed right-3 bottom-3 z-[100] flex w-[min(92vw,22rem)] flex-col gap-2" aria-live="polite">
+      @for (t of toast.toasts(); track t.id) {
+        <div class="pointer-events-auto flex items-start justify-between gap-3 border-l-4 bg-[#262626] px-3 py-2.5 text-xs shadow-lg"
+             [class.border-ok]="t.kind === 'success'" [class.border-danger]="t.kind === 'error'" [class.border-link]="t.kind === 'info'"
+             [attr.role]="t.kind === 'error' ? 'alert' : 'status'">
+          <span>{{ t.message }}</span>
+          <button type="button" class="text-muted hover:text-white" (click)="toast.dismiss(t.id)" aria-label="Dismiss">✕</button>
+        </div>
+      }
+    </div>
+  `,
+})
+export class ToastsComponent {
+  protected readonly toast = inject(ToastService);
+}
