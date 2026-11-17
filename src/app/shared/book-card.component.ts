@@ -10,41 +10,7 @@ import { IconComponent } from './icon.component';
   selector: 'bw-book-card',
   imports: [RouterLink, BookCoverComponent, DeliveryPipe, InrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <article class="flex gap-3 text-xs" [attr.data-testid]="'book-' + book().id">
-      <a [routerLink]="['/book', book().id]" class="block w-[34%] max-w-[8.5rem] min-w-[4.5rem] shrink-0 self-start transition-opacity hover:opacity-90"
-         [attr.aria-label]="'View ' + book().title">
-        <bw-book-cover [book]="book()" />
-      </a>
-
-      <div class="flex min-w-0 flex-1 flex-col gap-1">
-        <h3 class="text-sm leading-tight font-medium text-white">
-          <a [routerLink]="['/book', book().id]" class="hover:underline">{{ book().title }}</a>
-        </h3>
-        <p class="text-[#c6c6c6]">by <a routerLink="/writers" [queryParams]="{ name: book().author }" class="link">{{ book().author }}</a></p>
-        <p class="line-clamp-2 text-[11px] leading-snug text-[#c6c6c6]">{{ book().description }}</p>
-        <p class="mt-0.5 text-[#c6c6c6]">{{ book().format }}</p>
-        <p class="text-[11px]">
-          <span class="text-muted">{{ book().category }} · </span>
-          @for (g of book().genres; track g; let last = $last) {
-            <span class="link">{{ g }}</span>@if (!last) {<span>, </span>}
-          }
-        </p>
-        <p class="mt-1 text-base font-semibold text-white">{{ book().price | inr }}</p>
-        <p class="text-[11px] text-[#c6c6c6]">Delivery by <strong class="text-white">{{ book() | delivery }}</strong></p>
-
-        @if (showActions()) {
-          <div class="mt-1.5 flex gap-2">
-            <button type="button" class="btn-primary btn-sm" (click)="addToCart.emit(book())">Add to Cart</button>
-            <button type="button" class="btn-ghost btn-sm" (click)="wishlist.emit(book())" [attr.aria-pressed]="wished()"
-                    [attr.aria-label]="wished() ? 'Remove from wishlist' : 'Add to wishlist'">
-              <bw-icon name="heart" [size]="13" [filled]="wished()" />
-            </button>
-          </div>
-        }
-      </div>
-    </article>
-  `,
+  templateUrl: './book-card.component.html',
 })
 export class BookCardComponent {
   readonly book = input.required<Book>();

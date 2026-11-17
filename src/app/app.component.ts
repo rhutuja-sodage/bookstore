@@ -7,10 +7,6 @@ import { ToastsComponent } from './shared/toasts.component';
   selector: 'app-root',
   imports: [RouterOutlet, NavbarComponent, ToastsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <bw-navbar />
-    <router-outlet />
-    <bw-toasts />
-  `,
+  templateUrl: './app.component.html',
 })
 export class App {}

@@ -26,25 +26,7 @@ const PATHS: Record<string, string> = {
 @Component({
   selector: 'bw-icon',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <svg
-      [attr.width]="size()"
-      [attr.height]="size()"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    >
-      @if (filled()) {
-        <path [attr.d]="path()" fill="currentColor" />
-      } @else {
-        <path [attr.d]="path()" />
-      }
-    </svg>
-  `,
+  templateUrl: './icon.component.html',
   styles: `:host { display: inline-flex; line-height: 0; }`,
 })
 export class IconComponent {

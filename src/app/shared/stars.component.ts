@@ -3,13 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 @Component({
   selector: 'bw-stars',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <span class="inline-flex items-center gap-0.5 text-warn" [attr.aria-label]="value() + ' out of 5 stars'" role="img">
-      @for (s of stars(); track $index) {
-        <span [class.opacity-30]="!s" class="leading-none" [style.font-size.px]="size()">★</span>
-      }
-    </span>
-  `,
+  templateUrl: './stars.component.html',
 })
 export class StarsComponent {
   readonly value = input.required<number>();

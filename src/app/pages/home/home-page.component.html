@@ -1,0 +1,86 @@
+<div class="mx-auto flex max-w-[1400px] flex-col md:flex-row">
+  <!-- LEFT SIDEBAR: categories -->
+  <aside class="shrink-0 border-b border-line md:sticky md:top-11 md:h-[calc(100vh-2.75rem)] md:w-44 md:overflow-y-auto md:border-r md:border-b-0 lg:w-52"
+         aria-label="Book categories">
+    <ul class="flex gap-1 overflow-x-auto p-2 md:block md:space-y-px md:p-0">
+      @for (c of categories; track c) {
+        <li class="shrink-0">
+          <button type="button" (click)="catalog.patch({ category: c })"
+                  class="w-full whitespace-nowrap px-3 py-2 text-left text-xs transition-colors md:py-1.5"
+                  [class]="filters().category === c ? 'bg-brand font-medium text-white' : 'text-[#e0e0e0] hover:bg-[#2c2c2c]'"
+                  [attr.aria-current]="filters().category === c ? 'true' : null">{{ c }}</button>
+        </li>
+      }
+    </ul>
+  </aside>
+
+  <main class="min-w-0 flex-1 p-3 sm:p-4">
+    <!-- SEARCH + FILTER TOOLBAR -->
+    <form class="mb-4 grid grid-cols-2 items-end gap-2 lg:grid-cols-[2fr_repeat(5,1fr)]" role="search" (submit)="$event.preventDefault()">
+      <div class="relative col-span-2 lg:col-span-1">
+        <label for="q" class="sr-only">Search books</label>
+        <input id="q" type="search" name="q" class="field !pr-16 !pl-3" placeholder="Search you want to read here"
+               [ngModel]="filters().query" (ngModelChange)="catalog.patch({ query: $event })" autocomplete="off" />
+        @if (filters().query) {
+          <button type="button" class="absolute top-1/2 right-8 -translate-y-1/2 text-muted hover:text-white"
+                  (click)="catalog.patch({ query: '' })" aria-label="Clear search"><bw-icon name="close" [size]="14" /></button>
+        }
+        <span class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-[#c6c6c6]"><bw-icon name="search" [size]="15" /></span>
+      </div>
+
+      @for (s of selects(); track s.id) {
+        <div>
+          <label [for]="s.id" class="field-label !mb-0.5 !text-[10px] text-muted">{{ s.label }}</label>
+          <select [id]="s.id" [name]="s.id" class="field cursor-pointer" [ngModel]="s.value" (ngModelChange)="catalog.patch(s.patch($event))">
+            @for (o of s.options; track o) {<option [value]="o">{{ o }}</option>}
+          </select>
+        </div>
+      }
+    </form>
+
+    @if (filters().category !== 'All' || catalog.isFiltering()) {
+      <div class="mb-3 flex items-center justify-between text-xs text-[#c6c6c6]">
+        <span>{{ results().length }} {{ results().length === 1 ? 'book' : 'books' }} found</span>
+        <button type="button" class="link" (click)="catalog.reset()">Reset all filters</button>
+      </div>
+    }
+
+    @if (showResults()) {
+      @if (results().length) {
+        <section aria-label="Search results">
+          <div class="grid gap-x-5 gap-y-6 sm:grid-cols-2 xl:grid-cols-3" data-testid="results">
+            @for (b of results(); track b.id) {
+              <bw-book-card [book]="b" [wished]="wishlist.has(b.id)" (addToCart)="add($event)" (wishlist)="wishlist.toggle($event)" />
+            }
+          </div>
+        </section>
+      } @else {
+        <div class="panel p-8 text-center text-sm text-[#c6c6c6]" data-testid="no-results">
+          <p>No books match your search and filters.</p>
+          <button type="button" class="btn-primary btn-sm mt-3" (click)="catalog.reset()">Clear filters</button>
+        </div>
+      }
+    } @else {
+      @if (buyAgain().length) {
+        <section class="mb-7">
+          <h2 class="mb-3 text-sm font-semibold">Buy Again</h2>
+          <div class="grid gap-x-5 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
+            @for (b of buyAgain(); track b.id) {
+              <bw-book-card [book]="b" [wished]="wishlist.has(b.id)" (addToCart)="add($event)" (wishlist)="wishlist.toggle($event)" />
+            }
+          </div>
+        </section>
+      }
+      @for (s of sections(); track s.title) {
+        <section class="mb-7">
+          <h2 class="mb-3 text-sm font-semibold">{{ s.title }}</h2>
+          <div class="grid gap-x-5 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
+            @for (b of s.books; track b.id) {
+              <bw-book-card [book]="b" [wished]="wishlist.has(b.id)" (addToCart)="add($event)" (wishlist)="wishlist.toggle($event)" />
+            }
+          </div>
+        </section>
+      }
+    }
+  </main>
+</div>
