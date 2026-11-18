@@ -7,7 +7,6 @@ import { CartService, WishlistService } from '../../core/cart.service';
 import { ReviewService } from '../../core/order.service';
 import { AuthService } from '../../core/auth.service';
 import { ToastService } from '../../core/toast.service';
-import { WRITERS } from '../../core/catalog.data';
 import { BookCoverComponent } from '../../shared/book-cover.component';
 import { StarsComponent } from '../../shared/stars.component';
 import { DeliveryPipe, InrPipe } from '../../shared/pipes';
@@ -35,7 +34,7 @@ export class BookDetailPage {
     const b = this.book();
     return b ? this.catalog.related(b, 3) : [];
   });
-  protected readonly writer = computed(() => WRITERS.find((w) => w.name === this.book()?.author));
+  protected readonly writer = computed(() => this.catalog.writers().find((w) => w.name === this.book()?.author));
   protected readonly inCart = computed(() => {
     const b = this.book();
     return !!b && this.cart.items().some((i) => i.book.id === b.id);
@@ -44,10 +43,8 @@ export class BookDetailPage {
     const b = this.book();
     return !!b && this.wishlist.ids().includes(b.id);
   });
-  protected readonly reviews = computed(() => {
-    this.reviewsSvc.version();
-    return this.reviewsSvc.forBook(this.id());
-  });
+  protected readonly reviews = computed(() => this.reviewsSvc.forBook(this.id()));
+  protected readonly posting = signal(false);
 
   protected readonly rating = signal(0);
   protected readonly submitted = signal(false);
@@ -58,8 +55,9 @@ export class BookDetailPage {
   constructor() {
     // Scroll to top when moving between books
     effect(() => {
-      this.id();
+      const id = this.id();
       window.scrollTo({ top: 0 });
+      void this.reviewsSvc.load(id);
     });
   }
 
@@ -87,11 +85,16 @@ export class BookDetailPage {
     return field === 'rating' ? this.rating() === 0 : this.reviewForm.controls.text.invalid;
   }
 
-  protected submitReview(): void {
+  protected async submitReview(): Promise<void> {
     this.submitted.set(true);
-    if (this.reviewForm.invalid || this.rating() === 0) return;
-    const name = this.auth.user()?.name ?? 'Guest reader';
-    this.reviewsSvc.add(this.id(), name, this.rating(), this.reviewForm.controls.text.value.trim());
+    if (this.posting() || this.reviewForm.invalid || this.rating() === 0) return;
+    this.posting.set(true);
+    const result = await this.reviewsSvc.add(this.id(), this.rating(), this.reviewForm.controls.text.value.trim());
+    this.posting.set(false);
+    if (!result.ok) {
+      this.toast.error(result.error ?? 'Could not post your review.');
+      return;
+    }
     this.reviewForm.reset();
     this.rating.set(0);
     this.submitted.set(false);

@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/cart.service';
 import { AuthService } from '../../core/auth.service';
 import { CheckoutService, EMPTY_ADDRESS } from '../../core/checkout.service';
-import { COUPONS } from '../../core/pricing';
+import { CatalogService } from '../../core/catalog.service';
 import { Address } from '../../core/models';
 import { BookCoverComponent } from '../../shared/book-cover.component';
 import { QtyStepperComponent } from '../../shared/qty-stepper.component';
@@ -32,12 +32,13 @@ export class CheckoutPage {
   protected readonly cart = inject(CartService);
   protected readonly auth = inject(AuthService);
   protected readonly checkout = inject(CheckoutService);
+  private readonly catalog = inject(CatalogService);
   private readonly router = inject(Router);
 
   protected readonly states = STATES;
   protected readonly countries = COUNTRIES;
   protected readonly codes = ['+91', '+1', '+44', '+61', '+65', '+971'];
-  protected readonly couponHints = COUPONS.map((c) => c.code).join(', ');
+  protected readonly couponHints = computed(() => this.catalog.coupons().map((c) => c.code).join(', '));
 
   protected readonly savedAddress = computed(() => this.auth.user()?.address ?? null);
   protected readonly useSaved = signal(false);
@@ -132,7 +133,7 @@ export class CheckoutPage {
     const { remember, ...raw } = this.form.getRawValue();
     const address: Address = { ...raw, firstName: raw.firstName.trim(), lastName: raw.lastName.trim(), line1: raw.line1.trim(), city: raw.city.trim() };
     this.checkout.setAddress(address);
-    if (remember && !this.useSaved()) this.auth.saveAddress(address);
+    if (remember && !this.useSaved()) void this.auth.saveAddress(address);
     this.router.navigateByUrl('/payment');
   }
 }

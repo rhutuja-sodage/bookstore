@@ -30,19 +30,22 @@ export class ConfirmPage {
   protected readonly busy = signal(false);
   protected readonly willEarn = computed(() => giftPointsEarned(this.pricing().total, this.orders.previousOrdersTotal()));
 
-  protected confirm(): void {
+  protected async confirm(): Promise<void> {
     const address = this.address();
     const payment = this.payment();
     if (this.busy() || !address || !payment || !this.cart.items().length) return;
     this.busy.set(true);
     try {
-      const order = this.orders.place(this.cart.items(), address, payment, this.pricing());
+      // The server re-prices the order from the catalog; the bill shown here is only a preview.
+      const order = await this.orders.place(
+        this.cart.items(), address, payment, this.checkout.couponCode(), this.checkout.usePoints(),
+      );
       this.cart.clear();
       this.checkout.reset();
-      this.router.navigate(['/success', order.number]);
-    } catch {
+      await this.router.navigate(['/success', order.number]);
+    } catch (e) {
       this.busy.set(false);
-      this.toast.error('We could not place your order. Please try again.');
+      this.toast.error(e instanceof Error ? e.message : 'We could not place your order. Please try again.');
     }
   }
 }

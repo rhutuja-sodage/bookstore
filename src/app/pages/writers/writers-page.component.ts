@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { BOOKS, WRITERS } from '../../core/catalog.data';
+import { CatalogService } from '../../core/catalog.service';
+import { Writer } from '../../core/models';
 import { CartService, WishlistService } from '../../core/cart.service';
 import { BookCardComponent } from '../../shared/book-card.component';
 
@@ -15,13 +16,14 @@ export class WritersPage {
   readonly name = input<string>();
   protected readonly cart = inject(CartService);
   protected readonly wishlist = inject(WishlistService);
-  protected readonly writers = WRITERS;
+  private readonly catalog = inject(CatalogService);
+  protected readonly writers = this.catalog.writers;
 
-  protected readonly selected = computed(() => WRITERS.find((w) => w.name === this.name()) ?? WRITERS[0]);
-  protected readonly booksBy = computed(() => BOOKS.filter((b) => b.author === this.selected()?.name));
+  protected readonly selected = computed<Writer | undefined>(() => this.writers().find((w) => w.name === this.name()) ?? this.writers()[0]);
+  protected readonly booksBy = computed(() => this.catalog.books().filter((b) => b.author === this.selected()?.name));
 
   protected count(name: string): number {
-    return BOOKS.filter((b) => b.author === name).length;
+    return this.catalog.books().filter((b) => b.author === name).length;
   }
 
   protected initials(name: string): string {

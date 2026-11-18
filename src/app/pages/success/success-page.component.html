@@ -40,6 +40,8 @@
         Continue your Shopping <bw-icon name="arrow" [size]="14" />
       </button>
     </section>
+  } @else if (!loaded()) {
+    <section class="w-full max-w-sm bg-[#262626] p-6 text-center text-xs" role="status"><p>Loading your order…</p></section>
   } @else {
     <section class="w-full max-w-sm bg-[#262626] p-6 text-center text-xs">
       <p class="mb-3 text-sm">We couldn't find that order.</p>

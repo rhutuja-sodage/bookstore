@@ -1,6 +1,6 @@
-import { BOOKS } from './catalog.data';
+import { TEST_BOOKS as BOOKS, TEST_COUPONS as COUPONS } from './test-fixtures';
 import { filterBooks, DEFAULT_FILTERS } from './catalog.service';
-import { COUPONS, findCoupon, giftPointsEarned, netAmount, priceCart } from './pricing';
+import { findCoupon, giftPointsEarned, netAmount, priceCart } from './pricing';
 import { luhnValid, generateOrderNumber } from './utils';
 import { CartItem } from './models';
 
@@ -28,7 +28,7 @@ describe('pricing', () => {
   it('applies a percentage coupon with a cap', () => {
     const cart = items(['ultimate-guide-wealth', 1]);
     const net = netAmount(cart);
-    const { coupon } = findCoupon('books10', net);
+    const { coupon } = findCoupon(COUPONS, 'books10', net);
     expect(coupon?.code).toBe('BOOKS10');
     const p = priceCart(cart, coupon);
     expect(p.couponDiscount).toBe(107.91); // 10% of 1079.10, under the 200 cap
@@ -36,9 +36,9 @@ describe('pricing', () => {
   });
 
   it('rejects unknown coupons and coupons below the minimum order', () => {
-    expect(findCoupon('NOPE', 1000).error).toBe('Invalid coupon code.');
-    expect(findCoupon('READMORE15', 100).coupon).toBeNull();
-    expect(findCoupon('', 100).error).toBeTruthy();
+    expect(findCoupon(COUPONS, 'NOPE', 1000).error).toBe('Invalid coupon code.');
+    expect(findCoupon(COUPONS, 'READMORE15', 100).coupon).toBeNull();
+    expect(findCoupon(COUPONS, '', 100).error).toBeTruthy();
     expect(COUPONS.length).toBeGreaterThan(0);
   });
 

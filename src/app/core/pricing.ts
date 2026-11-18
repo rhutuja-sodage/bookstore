@@ -3,21 +3,16 @@ import { roundMoney } from './utils';
 
 export const SHIPPING_CHARGE = 0; // delivery is free
 
-export const COUPONS: Coupon[] = [
-  { code: 'BOOKS10', description: '10% off (max ₹200)', percent: 10, maxDiscount: 200, minOrder: 0 },
-  { code: 'WELCOME100', description: '₹100 off on orders above ₹300', flat: 100, minOrder: 300 },
-  { code: 'READMORE15', description: '15% off (max ₹300) on orders above ₹700', percent: 15, maxDiscount: 300, minOrder: 700 },
-];
-
 export interface CouponResult {
   coupon: Coupon | null;
   error: string | null;
 }
 
-export function findCoupon(code: string, netAmount: number): CouponResult {
+/** `coupons` is the list served by the API (GET /api/coupons); the server re-validates the code when the order is placed. */
+export function findCoupon(coupons: Coupon[], code: string, netAmount: number): CouponResult {
   const normalized = code.trim().toUpperCase();
   if (!normalized) return { coupon: null, error: 'Enter a coupon code.' };
-  const coupon = COUPONS.find((c) => c.code === normalized);
+  const coupon = coupons.find((c) => c.code === normalized);
   if (!coupon) return { coupon: null, error: 'Invalid coupon code.' };
   if (netAmount < coupon.minOrder) {
     return { coupon: null, error: `Coupon needs a minimum order of ₹${coupon.minOrder}.` };

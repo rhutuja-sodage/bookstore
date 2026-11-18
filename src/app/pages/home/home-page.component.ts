@@ -23,6 +23,8 @@ export class HomePage {
   private readonly auth = inject(AuthService);
 
   protected readonly categories = CATEGORIES;
+  protected readonly loading = this.catalog.loading;
+  protected readonly loadFailed = this.catalog.loadFailed;
   protected readonly filters = this.catalog.filters;
   protected readonly results = this.catalog.results;
 
@@ -36,7 +38,7 @@ export class HomePage {
       { id: 'language', label: 'Language', value: f.language, options: LANGUAGES, patch: (v: string) => ({ language: v }) },
       { id: 'format', label: 'Format (Paperback, eBook etc)', value: f.format, options: FORMATS, patch: (v: string) => ({ format: v }) },
       { id: 'price', label: 'Price Range', value: f.price, options: PRICE_RANGES.map((r) => r.label), patch: (v: string) => ({ price: v }) },
-      { id: 'brand', label: 'Brand (Publisher)', value: f.brand, options: this.catalog.brands, patch: (v: string) => ({ brand: v }) },
+      { id: 'brand', label: 'Brand (Publisher)', value: f.brand, options: this.catalog.brands(), patch: (v: string) => ({ brand: v }) },
       { id: 'sort', label: 'Sort by', value: f.sort, options: SORT_OPTIONS, patch: (v: string) => ({ sort: v }) },
     ];
   });

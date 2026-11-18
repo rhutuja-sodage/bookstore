@@ -135,7 +135,7 @@
             <button type="button" class="btn-primary btn-sm shrink-0" (click)="applyCoupon()" data-testid="apply-coupon">Apply</button>
           </div>
           @if (couponError()) {<p class="field-error" role="alert">{{ couponError() }}</p>}
-          <p class="mt-1.5 text-[10px] text-muted">Try: {{ couponHints }}</p>
+          <p class="mt-1.5 text-[10px] text-muted">Try: {{ couponHints() }}</p>
         }
       </div>
 

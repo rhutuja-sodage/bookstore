@@ -45,7 +45,14 @@
       </div>
     }
 
-    @if (showResults()) {
+    @if (loading() && !catalog.books().length) {
+      <p class="panel p-8 text-center text-sm text-[#c6c6c6]" role="status">Loading books…</p>
+    } @else if (loadFailed()) {
+      <div class="panel p-8 text-center text-sm text-[#c6c6c6]" role="alert" data-testid="load-failed">
+        <p>We couldn't load the books. Please check that the server is running.</p>
+        <button type="button" class="btn-primary btn-sm mt-3" (click)="catalog.load()">Try again</button>
+      </div>
+    } @else if (showResults()) {
       @if (results().length) {
         <section aria-label="Search results">
           <div class="grid gap-x-5 gap-y-6 sm:grid-cols-2 xl:grid-cols-3" data-testid="results">

@@ -35,7 +35,7 @@
 
       @if (error()) {<p class="border-l-4 border-danger bg-[#2d1b1d] px-3 py-2 text-xs" role="alert">{{ error() }}</p>}
 
-      <button type="submit" class="btn-primary w-full">{{ mode() === 'login' ? 'Log in' : 'Register' }}</button>
+      <button type="submit" class="btn-primary w-full" [disabled]="busy()">{{ busy() ? 'Please wait…' : mode() === 'login' ? 'Log in' : 'Register' }}</button>
     </form>
 
     <p class="mt-4 text-center text-xs text-[#c6c6c6]">

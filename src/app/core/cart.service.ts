@@ -1,6 +1,6 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Book, CartItem, CartLine } from './models';
-import { BOOKS } from './catalog.data';
+import { CatalogService } from './catalog.service';
 import { store } from './utils';
 import { ToastService } from './toast.service';
 
@@ -10,13 +10,15 @@ const WISHLIST_KEY = 'wishlist';
 @Injectable({ providedIn: 'root' })
 export class CartService {
   private readonly toast = inject(ToastService);
+  private readonly catalog = inject(CatalogService);
   private readonly lines = signal<CartLine[]>(store.read<CartLine[]>(CART_KEY, []));
 
-  readonly items = computed<CartItem[]>(() =>
-    this.lines()
-      .map((l) => ({ book: BOOKS.find((b) => b.id === l.bookId), qty: l.qty }))
-      .filter((i): i is CartItem => !!i.book),
-  );
+  readonly items = computed<CartItem[]>(() => {
+    const books = this.catalog.books();
+    return this.lines()
+      .map((l) => ({ book: books.find((b) => b.id === l.bookId), qty: l.qty }))
+      .filter((i): i is CartItem => !!i.book);
+  });
   readonly count = computed(() => this.lines().reduce((n, l) => n + l.qty, 0));
 
   constructor() {
@@ -54,10 +56,12 @@ export class CartService {
 @Injectable({ providedIn: 'root' })
 export class WishlistService {
   private readonly toast = inject(ToastService);
+  private readonly catalog = inject(CatalogService);
   readonly ids = signal<string[]>(store.read<string[]>(WISHLIST_KEY, []));
-  readonly books = computed(() =>
-    this.ids().map((id) => BOOKS.find((b) => b.id === id)).filter((b): b is Book => !!b),
-  );
+  readonly books = computed(() => {
+    const all = this.catalog.books();
+    return this.ids().map((id) => all.find((b) => b.id === id)).filter((b): b is Book => !!b);
+  });
   readonly count = computed(() => this.ids().length);
 
   constructor() {

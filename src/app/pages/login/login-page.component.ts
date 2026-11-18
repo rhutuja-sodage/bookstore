@@ -53,13 +53,18 @@ export class LoginPage {
     this.form.patchValue({ email: 'demo@bookworm.com', password: 'Demo@123' });
   }
 
-  protected submit(): void {
+  protected readonly busy = signal(false);
+
+  protected async submit(): Promise<void> {
+    if (this.busy()) return;
     this.submitted.set(true);
     this.error.set('');
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
     const { name, email, password } = this.form.getRawValue();
-    const result = this.isLogin() ? this.auth.login(email, password) : this.auth.register(name, email, password);
+    this.busy.set(true);
+    const result = await (this.isLogin() ? this.auth.login(email, password) : this.auth.register(name, email, password));
+    this.busy.set(false);
     if (!result.ok) {
       this.error.set(result.error ?? 'Something went wrong.');
       return;

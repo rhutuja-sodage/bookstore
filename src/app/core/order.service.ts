@@ -1,34 +1,35 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { Address, Book, CartItem, Order, PaymentInfo, PriceBreakdown, Review } from './models';
-import { BOOKS } from './catalog.data';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { Address, Book, CartItem, Order, PaymentInfo, Review } from './models';
+import { CatalogService } from './catalog.service';
 import { AuthService } from './auth.service';
-import { HOURS_48_MS, deliveryFromNow, generateOrderNumber, store, uid } from './utils';
-import { giftPointsEarned } from './pricing';
+import { API_BASE, apiError } from './api';
+import { HOURS_48_MS } from './utils';
 
-const ORDERS_KEY = 'orders';
-const REVIEWS_KEY = 'reviews';
-
+/** Orders live on the server; this service keeps the logged-in user's copy and talks to /api/orders. */
 @Injectable({ providedIn: 'root' })
 export class OrderService {
+  private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
-  private readonly all = signal<Order[]>(store.read<Order[]>(ORDERS_KEY, []));
+  private readonly catalog = inject(CatalogService);
+  private readonly all = signal<Order[]>([]);
+
+  /** False until the first load for the current user has finished (lets pages avoid a flash of "not found"). */
+  readonly loaded = signal(false);
 
   /** Orders of the logged-in user, newest first */
-  readonly orders = computed(() => {
-    const email = this.auth.user()?.email;
-    return this.all()
-      .filter((o) => o.userEmail === email)
-      .sort((a, b) => b.placedAt.localeCompare(a.placedAt));
-  });
+  readonly orders = computed(() => [...this.all()].sort((a, b) => b.placedAt.localeCompare(a.placedAt)));
 
   /** Distinct books the user has bought before (non-cancelled orders) */
   readonly boughtBooks = computed<Book[]>(() => {
+    const books = this.catalog.books();
     const seen = new Set<string>();
     const result: Book[] = [];
     for (const order of this.orders()) {
       if (order.status === 'Cancelled') continue;
       for (const line of order.lines) {
-        const book = BOOKS.find((b) => b.id === line.bookId);
+        const book = books.find((b) => b.id === line.bookId);
         if (book && !seen.has(book.id)) {
           seen.add(book.id);
           result.push(book);
@@ -41,7 +42,6 @@ export class OrderService {
   /**
    * Recommendations based on order history: unbought books that share a
    * category / genre / author with something previously purchased.
-   * Falls back to the highest rated books for users with no history.
    */
   readonly recommendations = computed<Book[]>(() => {
     const bought = this.boughtBooks();
@@ -50,7 +50,9 @@ export class OrderService {
     const categories = new Set(bought.map((b) => b.category));
     const authors = new Set(bought.map((b) => b.author));
     const genres = new Set(bought.flatMap((b) => b.genres));
-    return BOOKS.filter((b) => !boughtIds.has(b.id))
+    return this.catalog
+      .books()
+      .filter((b) => !boughtIds.has(b.id))
       .map((b) => ({
         book: b,
         score:
@@ -64,6 +66,29 @@ export class OrderService {
       .map((x) => x.book);
   });
 
+  constructor() {
+    // Load on login / session restore, clear on logout
+    effect(() => {
+      const email = this.auth.user()?.email;
+      untracked(() => (email ? void this.load() : this.reset()));
+    });
+  }
+
+  async load(): Promise<void> {
+    try {
+      this.all.set(await firstValueFrom(this.http.get<Order[]>(`${API_BASE}/orders`)));
+    } catch {
+      /* keep what we have; a 401 is handled by the interceptor */
+    } finally {
+      this.loaded.set(true);
+    }
+  }
+
+  private reset(): void {
+    this.all.set([]);
+    this.loaded.set(false);
+  }
+
   /** Total of previous, non-cancelled orders of this user */
   previousOrdersTotal(): number {
     return this.orders()
@@ -71,48 +96,33 @@ export class OrderService {
       .reduce((sum, o) => sum + o.pricing.total, 0);
   }
 
-  place(items: CartItem[], address: Address, payment: PaymentInfo, pricing: PriceBreakdown): Order {
-    const user = this.auth.user();
-    if (!user) throw new Error('Not logged in');
-
-    const placed = new Date();
-    const farthest = Math.max(...items.map((i) => i.book.deliveryDays));
-    const pointsEarned = giftPointsEarned(pricing.total, this.previousOrdersTotal());
-
-    const order: Order = {
-      id: uid('ord'),
-      number: generateOrderNumber(placed),
-      userEmail: user.email,
-      placedAt: placed.toISOString(),
-      deliveryDate: deliveryFromNow(farthest).toISOString(),
-      lines: items.map(({ book, qty }) => ({
-        bookId: book.id,
-        title: book.title,
-        author: book.author,
-        description: book.description,
-        format: book.format,
-        genres: book.genres,
-        price: book.price,
-        qty,
-        deliveryDate: deliveryFromNow(book.deliveryDays).toISOString(),
-      })),
-      address,
-      payment,
-      pricing,
-      pointsEarned,
-      status: 'Placed',
-    };
-
-    this.persist([...this.all(), order]);
-    this.auth.adjustPoints(pointsEarned - pricing.pointsUsed);
-    return order;
+  /**
+   * Places the order. Only product ids + quantities, the address, the payment reference, the coupon code and the
+   * "use gift points" flag are sent - the server prices the order itself. Rejects with a readable Error.
+   */
+  async place(
+    items: CartItem[], address: Address, payment: PaymentInfo, couponCode: string | null, usePoints: boolean,
+  ): Promise<Order> {
+    try {
+      const order = await firstValueFrom(
+        this.http.post<Order>(`${API_BASE}/orders`, {
+          items: items.map((i) => ({ bookId: i.book.id, qty: i.qty })),
+          address, payment, couponCode, usePoints,
+        }),
+      );
+      this.all.update((l) => [...l, order]);
+      void this.auth.refresh(); // gift points changed
+      return order;
+    } catch (e) {
+      throw new Error(apiError(e, 'We could not place your order. Please try again.'));
+    }
   }
 
   byNumber(number: string): Order | undefined {
     return this.orders().find((o) => o.number === number);
   }
 
-  /** Cancellation is only allowed within 48 hours of placing the order */
+  /** Cancellation is only allowed within 48 hours of placing the order (the server enforces this too) */
   canCancel(order: Order, now = Date.now()): boolean {
     return order.status === 'Placed' && now - new Date(order.placedAt).getTime() <= HOURS_48_MS;
   }
@@ -122,49 +132,44 @@ export class OrderService {
     return Math.max(0, Math.ceil(left / 3_600_000));
   }
 
-  cancel(number: string): { ok: boolean; error?: string } {
-    const order = this.byNumber(number);
-    if (!order) return { ok: false, error: 'Order not found.' };
-    if (order.status === 'Cancelled') return { ok: false, error: 'Order is already cancelled.' };
-    if (!this.canCancel(order)) {
-      return { ok: false, error: 'Orders can only be cancelled within 48 hours of payment.' };
+  async cancel(number: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const updated = await firstValueFrom(this.http.post<Order>(`${API_BASE}/orders/${encodeURIComponent(number)}/cancel`, {}));
+      this.all.update((l) => l.map((o) => (o.id === updated.id ? updated : o)));
+      void this.auth.refresh(); // gift points were reversed
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: apiError(e, 'Could not cancel order.') };
     }
-    this.persist(
-      this.all().map((o) =>
-        o.id === order.id ? { ...o, status: 'Cancelled', cancelledAt: new Date().toISOString() } : o,
-      ),
-    );
-    // Reverse the gift-point movements of this order
-    this.auth.adjustPoints(order.pricing.pointsUsed - order.pointsEarned);
-    return { ok: true };
-  }
-
-  private persist(list: Order[]): void {
-    this.all.set(list);
-    store.write(ORDERS_KEY, list);
   }
 }
 
 @Injectable({ providedIn: 'root' })
 export class ReviewService {
-  private readonly all = signal<Review[]>(store.read<Review[]>(REVIEWS_KEY, []));
+  private readonly http = inject(HttpClient);
+  private readonly cache = signal<Record<string, Review[]>>({});
 
-  private readonly seeded: Review[] = [
-    {
-      id: 'seed-r1', bookId: 'joy-of-minimalism', author: 'John Smith', rating: 5, date: '2026-06-28',
-      text: 'The accordion component delivers large amounts of content in a small space through progressive disclosure. The user gets key details about the underlying content and can choose to expand that content within the constraints of the accordion.',
-    },
-  ];
-
+  /** Reviews for a book, as loaded by `load()` (empty until then). */
   forBook(bookId: string): Review[] {
-    return [...this.all().filter((r) => r.bookId === bookId), ...this.seeded.filter((r) => r.bookId === bookId)];
+    return this.cache()[bookId] ?? [];
   }
 
-  add(bookId: string, author: string, rating: number, text: string): void {
-    const review: Review = { id: uid('rev'), bookId, author, rating, text, date: new Date().toISOString() };
-    this.all.update((l) => [review, ...l]);
-    store.write(REVIEWS_KEY, this.all());
+  async load(bookId: string): Promise<void> {
+    try {
+      const list = await firstValueFrom(this.http.get<Review[]>(`${API_BASE}/books/${encodeURIComponent(bookId)}/reviews`));
+      this.cache.update((c) => ({ ...c, [bookId]: list }));
+    } catch {
+      /* leave the list as it was */
+    }
   }
 
-  readonly version = this.all;
+  async add(bookId: string, rating: number, text: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const review = await firstValueFrom(this.http.post<Review>(`${API_BASE}/books/${encodeURIComponent(bookId)}/reviews`, { rating, text }));
+      this.cache.update((c) => ({ ...c, [bookId]: [review, ...(c[bookId] ?? [])] }));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: apiError(e, 'Could not post your review.') };
+    }
+  }
 }

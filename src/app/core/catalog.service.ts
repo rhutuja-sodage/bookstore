@@ -1,6 +1,9 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Book } from './models';
-import { BOOKS, PRICE_RANGES } from './catalog.data';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import { Book, Coupon, Writer } from './models';
+import { PRICE_RANGES } from './catalog.data';
+import { API_BASE } from './api';
 
 export interface BookFilters {
   query: string;
@@ -65,12 +68,22 @@ export function filterBooks(books: Book[], f: BookFilters): Book[] {
   return sorted;
 }
 
+/**
+ * The catalog (books, writers, coupons) is loaded once from the API at app start.
+ * Search / filter / sort then run in the browser so the page reacts instantly while typing.
+ */
 @Injectable({ providedIn: 'root' })
 export class CatalogService {
-  readonly books = BOOKS;
+  private readonly http = inject(HttpClient);
+
+  readonly books = signal<Book[]>([]);
+  readonly writers = signal<Writer[]>([]);
+  readonly coupons = signal<Coupon[]>([]);
+  readonly loading = signal(false);
+  readonly loadFailed = signal(false);
   readonly filters = signal<BookFilters>({ ...DEFAULT_FILTERS });
 
-  readonly results = computed(() => filterBooks(this.books, this.filters()));
+  readonly results = computed(() => filterBooks(this.books(), this.filters()));
   readonly isFiltering = computed(() => {
     const f = this.filters();
     return (
@@ -78,7 +91,26 @@ export class CatalogService {
       f.price !== 'All Prices' || f.brand !== 'All'
     );
   });
-  readonly brands = ['All', ...Array.from(new Set(BOOKS.map((b) => b.publisher))).sort()];
+  readonly brands = computed(() => ['All', ...Array.from(new Set(this.books().map((b) => b.publisher))).sort()]);
+
+  async load(): Promise<void> {
+    this.loading.set(true);
+    this.loadFailed.set(false);
+    try {
+      const [books, writers, coupons] = await Promise.all([
+        firstValueFrom(this.http.get<Book[]>(`${API_BASE}/books`, { params: { limit: 500 } })),
+        firstValueFrom(this.http.get<Writer[]>(`${API_BASE}/writers`)),
+        firstValueFrom(this.http.get<Coupon[]>(`${API_BASE}/coupons`)),
+      ]);
+      this.books.set(books);
+      this.writers.set(writers);
+      this.coupons.set(coupons);
+    } catch {
+      this.loadFailed.set(true);
+    } finally {
+      this.loading.set(false);
+    }
+  }
 
   patch(p: Partial<BookFilters>): void {
     this.filters.update((f) => ({ ...f, ...p }));
@@ -89,11 +121,11 @@ export class CatalogService {
   }
 
   byId(id: string): Book | undefined {
-    return this.books.find((b) => b.id === id);
+    return this.books().find((b) => b.id === id);
   }
 
   related(book: Book, limit = 3): Book[] {
-    return this.books
+    return this.books()
       .filter((b) => b.id !== book.id)
       .map((b) => ({
         b,
@@ -109,10 +141,10 @@ export class CatalogService {
   }
 
   bestsellers(limit = 3): Book[] {
-    return [...this.books].sort((a, b) => b.sold - a.sold).slice(0, limit);
+    return [...this.books()].sort((a, b) => b.sold - a.sold).slice(0, limit);
   }
 
   newLaunches(limit = 3): Book[] {
-    return [...this.books].sort((a, b) => b.published.localeCompare(a.published)).slice(0, limit);
+    return [...this.books()].sort((a, b) => b.published.localeCompare(a.published)).slice(0, limit);
   }
 }
